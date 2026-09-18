@@ -1,10 +1,10 @@
 export const dynamic = 'force-dynamic';
 
 import { handler, ok, toId, ApiError } from '@/lib/http';
-import { Backlink, BacklinkImport } from '@/models';
+import { Backlink, BacklinkImport, CrawlPage } from '@/models';
 import { requireAuth } from '../../_lib';
 import { resolveProject, oid } from '../_seo';
-import { importBacklinksCsv, SRC } from '@/server/seo/intelligence';
+import { importBacklinksCsv, firstPartyBacklinkSummary, webamazeeDomainStrength, SRC } from '@/server/seo/intelligence';
 
 export const GET = handler(async (req: Request) => {
   const session = await requireAuth();
@@ -24,9 +24,25 @@ export const GET = handler(async (req: Request) => {
     Backlink.aggregate([{ $match: { organization: oid(session.orgId), project: project._id } as never }, { $group: { _id: '$followType', count: { $sum: 1 } } }]),
     BacklinkImport.find({ organization: session.orgId, project: project._id }).sort({ createdAt: -1 }).limit(10).lean<any>(),
   ]);
+  const [summary, domainStrength] = await Promise.all([
+    firstPartyBacklinkSummary(session.orgId, String(project._id)),
+    webamazeeDomainStrength(session.orgId, String(project._id)),
+  ]);
+  // source-page titles where the crawler itself saw the source page
+  const srcUrls = items.map((i) => String(i.sourceUrl ?? '')).filter(Boolean).slice(0, 50);
+  const srcPages = srcUrls.length
+    ? await CrawlPage.find({ project: project._id, $or: [{ finalUrl: { $in: srcUrls } }, { url: { $in: srcUrls } }] }).select('url finalUrl title').lean<any>()
+    : [];
+  const titleOf = new Map<string, string>();
+  for (const p of srcPages) { titleOf.set(String(p.url), String(p.title ?? '')); titleOf.set(String(p.finalUrl), String(p.title ?? '')); }
+  const itemsWithTitles = items.map((b) => ({ ...b, sourcePageTitle: titleOf.get(String(b.sourceUrl)) ?? null }));
   return ok(toId({
-    items, total, bySource, byFollow, imports,
+    items: itemsWithTitles, total, bySource, byFollow, imports,
+    referringDomains: summary.referringDomains,
+    topSourceDomains: summary.topSourceDomains,
+    domainStrength,
     label: 'Discovered Backlinks',
+    source: summary.source,
     disclaimer: 'This is a discovered backlink dataset, not a complete internet-wide backlink index. Sources: ' + SRC.crawler + ', user CSV imports, connected Google data where available.',
   }));
 });

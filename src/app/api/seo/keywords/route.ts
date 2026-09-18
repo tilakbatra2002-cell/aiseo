@@ -4,6 +4,7 @@ import { handler, ok, toId, ApiError } from '@/lib/http';
 import { Keyword, RankingObservation, KeywordObservation } from '@/models';
 import { requireAuth } from '../../_lib';
 import { resolveProject } from '../_seo';
+import { firstPartyKeywordCoverage } from '@/server/seo/intelligence';
 
 export const GET = handler(async (req: Request) => {
   const session = await requireAuth();
@@ -24,12 +25,14 @@ export const GET = handler(async (req: Request) => {
   ]);
   const rankMap = new Map(latestRanks.map((r: { _id: { toString(): string }; position: number; date: string; sourceLabel: string }) => [r._id.toString(), r]));
   const histMap = new Map(histories.map((r: { _id: { toString(): string }; points: { date: string; position: number }[] }) => [r._id.toString(), r.points]));
+  const coverage = await firstPartyKeywordCoverage(session.orgId, String(project._id), items);
   return ok(toId({
     items: items.map((k) => ({
       ...k,
       latestRank: rankMap.get(k._id.toString()) ?? null,
       history: histMap.get(k._id.toString()) ?? [],
       lastObservedAt: (rankMap.get(k._id.toString()) as { date?: string } | undefined)?.date ?? null,
+      firstParty: coverage[k._id.toString()] ?? null,
     })),
     note: 'Positions shown only from connected Google Search Console data, labelled "Google Search Console Average Position". Search volume / CPC / difficulty are unavailable without proprietary data providers and are not estimated.',
   }));

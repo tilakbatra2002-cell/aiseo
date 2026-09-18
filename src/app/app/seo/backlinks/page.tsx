@@ -7,9 +7,11 @@ import { LimitationNote, ProjectPicker, SectionTitle, SourceBadge, Td, Th, cut, 
 
 interface Backlink { _id: string; sourceUrl: string; targetUrl: string; anchor: string; followType: string; firstSeenAt: string; lastCheckedAt?: string; status: string; source: string }
 interface Data {
-  items: Backlink[]; total: number;
+  items: (Backlink & { sourcePageTitle?: string | null })[]; total: number;
   bySource: { _id: string; count: number }[]; byFollow: { _id: string; count: number }[];
   imports: { _id: string; filename?: string; rowsImported: number; rowsSkipped: number; createdAt: string }[];
+  referringDomains: number; topSourceDomains: { domain: string; discoveredLinks: number }[];
+  domainStrength: { available: boolean; reason?: string; score?: number; max?: number; signals?: Record<string, unknown>; formula?: string; disclaimer?: string };
   label: string; disclaimer: string;
 }
 
@@ -43,10 +45,44 @@ function Inner({ project }: { project: string }) {
 
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Card><div className="text-xs font-semibold uppercase" style={{ color: 'var(--text-3)' }}>Discovered backlinks</div><div className="mt-1 text-2xl font-extrabold" style={{ color: 'var(--accent)' }}>{data?.total ?? 0}</div><div className="mt-1 text-[10px]" style={{ color: 'var(--text-3)' }}>partial dataset</div></Card>
-        {(data?.bySource ?? []).map((s) => (
+        <Card><div className="text-xs font-semibold uppercase" style={{ color: 'var(--text-3)' }}>Referring domains</div><div className="mt-1 text-2xl font-extrabold" style={{ color: 'var(--text)' }}>{data?.referringDomains ?? 0}</div><div className="mt-1 text-[10px]" style={{ color: 'var(--text-3)' }}>discovered</div></Card>
+        <Card>
+          <div className="text-xs font-semibold uppercase" style={{ color: 'var(--text-3)' }}>Webamazee Domain Strength</div>
+          {data?.domainStrength?.available
+            ? <div className="mt-1 text-2xl font-extrabold" style={{ color: 'var(--accent)' }}>{data.domainStrength.score}<span className="text-sm" style={{ color: 'var(--text-3)' }}>/{data.domainStrength.max}</span></div>
+            : <div className="mt-1 text-sm font-bold" style={{ color: 'var(--text-3)' }}>{data?.domainStrength?.reason ?? 'Requires crawl'}</div>}
+          <div className="mt-1 text-[10px]" style={{ color: 'var(--text-3)' }}>first-party, internal scale</div>
+        </Card>
+        {(data?.bySource ?? []).slice(0, 1).map((s) => (
           <Card key={s._id}><div className="text-xs font-semibold uppercase" style={{ color: 'var(--text-3)' }}>Source · {s._id}</div><div className="mt-1 text-2xl font-extrabold" style={{ color: 'var(--text)' }}>{s.count}</div></Card>
         ))}
       </div>
+
+      {data?.domainStrength?.available && (
+        <Card className="mb-4">
+          <SectionTitle right={<SourceBadge source="Observed by Webamazee" />}>Webamazee Domain Strength — how it's calculated</SectionTitle>
+          <div className="grid gap-2 text-xs md:grid-cols-5" style={{ color: 'var(--text-2)' }}>
+            {Object.entries(data.domainStrength.signals ?? {}).map(([k, v]) => (
+              <div key={k} className="rounded border p-2" style={{ borderColor: 'var(--border)' }}>
+                <b className="capitalize" style={{ color: 'var(--text)' }}>{k}</b>: {(v as { points?: number }).points}/{(v as { max?: number }).max} pts
+                <div className="mt-1 text-[10px]" style={{ color: 'var(--text-3)' }}>{JSON.stringify(v).replace(/[{}"]/g, '').replace(/,/g, ' · ').slice(0, 90)}</div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px]" style={{ color: 'var(--text-3)' }}>{data.domainStrength.formula}. <em>{data.domainStrength.disclaimer}</em></p>
+        </Card>
+      )}
+
+      {(data?.topSourceDomains?.length ?? 0) > 0 && (
+        <Card className="mb-4" pad={false}>
+          <div className="px-5 pt-4"><SectionTitle right={<SourceBadge source="Observed by Webamazee" />}>Top referring domains (discovered)</SectionTitle></div>
+          <div className="flex flex-wrap gap-1.5 p-5">
+            {data!.topSourceDomains.map((d) => (
+              <span key={d.domain} className="badge" style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', color: 'var(--text-2)' }}>{d.domain} ×{d.discoveredLinks}</span>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <Card className="mb-4">
         <SectionTitle right={<SourceBadge source="User Import" />}>Import CSV</SectionTitle>
@@ -72,11 +108,11 @@ function Inner({ project }: { project: string }) {
           <EmptyState title="No discovered backlinks yet" hint="Crawl competitor/partner sites or import a CSV above. We only show links we actually found — no synthetic backlink counts." />
         ) : (
           <table className="w-full">
-            <thead><tr><Th>Source URL</Th><Th>Target URL</Th><Th>Anchor</Th><Th>Type</Th><Th>First seen</Th><Th>Status</Th><Th>Source</Th></tr></thead>
+            <thead><tr><Th>Source URL / page title</Th><Th>Target URL</Th><Th>Anchor</Th><Th>Type</Th><Th>First seen</Th><Th>Status</Th><Th>Source</Th></tr></thead>
             <tbody>
               {data.items.map((b) => (
                 <tr key={b._id} className="border-t" style={{ borderColor: 'var(--border)' }}>
-                  <Td style={{ color: 'var(--text-2)' }}>{cut(b.sourceUrl.replace(/^https?:\/\//, ''), 38)}</Td>
+                  <Td style={{ color: 'var(--text-2)' }}>{cut(b.sourceUrl.replace(/^https?:\/\//, ''), 38)}{b.sourcePageTitle ? <span className="ml-1 text-[10px]" style={{ color: 'var(--text-3)' }}>“{cut(b.sourcePageTitle, 24)}”</span> : null}</Td>
                   <Td className="font-semibold">{cut(b.targetUrl.replace(/^https?:\/\//, ''), 34)}</Td>
                   <Td style={{ color: 'var(--text-2)' }}>{cut(b.anchor, 22)}</Td>
                   <Td><Tag tone={b.followType === 'follow' ? 'blue' : undefined}>{b.followType}</Tag></Td>

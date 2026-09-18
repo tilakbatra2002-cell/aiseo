@@ -154,7 +154,7 @@ Retries use exponential backoff at both the job level and the task level; QA can
 
 ## Integrations
 
-Architecture for: Google Search Console, Google Analytics, Google Business Profile, WordPress, Shopify, Webflow, Slack, Email (SMTP), Ahrefs, Semrush, DataForSEO, custom APIs.
+Architecture for: Google Search Console, Google Analytics, Google Business Profile, WordPress, Shopify, Webflow, Slack, Email (SMTP), custom APIs. SEO data itself is first-party (Webamazee SEO Intelligence: own crawler + own database — no paid SEO APIs).
 
 - States: `Connected · Not Connected · Requires OAuth · Requires API Key · Unavailable`.
 - Credentials are AES-256-GCM encrypted at rest and never sent to the browser.

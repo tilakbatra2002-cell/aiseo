@@ -114,9 +114,7 @@ export const INTEGRATIONS: { provider: string; label: string; status: string }[]
   { provider: 'wordpress', label: 'WordPress', status: 'Requires API Key' },
   { provider: 'shopify', label: 'Shopify', status: 'Requires API Key' },
   { provider: 'webflow', label: 'Webflow', status: 'Requires API Key' },
-  { provider: 'ahrefs', label: 'Ahrefs', status: 'Requires API Key' },
-  { provider: 'semrush', label: 'Semrush', status: 'Requires API Key' },
-  { provider: 'dataforseo', label: 'DataForSEO', status: 'Requires API Key' },
+
   { provider: 'slack', label: 'Slack', status: 'Requires API Key' },
   { provider: 'smtp', label: 'Email (SMTP)', status: 'Requires API Key' },
   { provider: 'playwright_worker', label: 'Browser Automation Worker', status: 'Unavailable' },
@@ -190,6 +188,9 @@ export async function ensureSeeded(): Promise<{ seeded: boolean }> {
   }
 
   // Integrations catalogue
+  // Paid SEO data providers (Ahrefs/Semrush/DataForSEO) were removed: Webamazee
+  // SEO Intelligence is first-party. Delete stale placeholder rows on re-seed.
+  await Integration.deleteMany({ provider: { $in: ['ahrefs', 'semrush', 'dataforseo'] } });
   for (const i of INTEGRATIONS) {
     await Integration.updateOne(
       { organization: org._id, provider: i.provider },

@@ -344,3 +344,175 @@ export async function generateSeoReport(orgId: string, projectId: string, user: 
   });
   return Report.findById(report._id).lean();
 }
+
+/* ========================================================================== */
+/* FIRST-PARTY SEO DATA ENGINE (§2–§5)                                        */
+/* Everything below is computed exclusively from Webamazee-collected data:    */
+/* own crawls, own link graph, own historical snapshots, user imports.        */
+/* No third-party SEO data provider is queried, estimated, or simulated.      */
+/* ========================================================================== */
+
+const hostOf = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+const clean = (u: string) => String(u).replace(/\/+$/, '');
+const containsTerm = (text: string, term: string) => {
+  const t = term.toLowerCase().trim();
+  if (!t) return false;
+  return text.toLowerCase().includes(t);
+};
+
+/** §3 — First-party backlink summary: discovered links only, with referring-domain graph. */
+export async function firstPartyBacklinkSummary(orgId: string, projectId: string) {
+  const items = await Backlink.find({ organization: orgId, project: projectId })
+    .select('sourceUrl targetUrl anchor followType status firstSeenAt lastSeenAt source')
+    .lean<Record<string, unknown>[]>();
+  const domains = new Map<string, number>();
+  const byFollow: Record<string, number> = {};
+  for (const b of items) {
+    const d = hostOf(String(b.sourceUrl ?? ''));
+    if (d) domains.set(d, (domains.get(d) ?? 0) + 1);
+    const f = String(b.followType ?? 'follow');
+    byFollow[f] = (byFollow[f] ?? 0) + 1;
+  }
+  const topSourceDomains = [...domains.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10)
+    .map(([domain, count]) => ({ domain, discoveredLinks: count }));
+  return {
+    total: items.length,
+    referringDomains: domains.size,
+    byFollow,
+    topSourceDomains,
+    label: 'Discovered Backlinks',
+    source: 'Observed by Webamazee — discovered by our own crawler and user CSV imports; a partial dataset, never an internet-wide index.',
+  };
+}
+
+/** §4 — Webamazee Domain Strength (our own 0–100 score, fully documented).
+ *
+ * score = referral (≤40) + structure (≤25) + technical (≤13) + content (≤12) + stability (≤10):
+ *  referral   = min(4 × discoveredReferringDomains + 1 × discoveredReferringPages, 40)
+ *  structure  = min(15 × indexableRatio, 15) + min(2 × avgInternalInlinksPerPage, 10)
+ *  technical  = (https ? 5 : 0) + (avgTtfb<500ms ? 8 : <1500ms ? 5 : <3000ms ? 2 : 0)
+ *  content    = min(12 × avgWordCount/600, 12)
+ *  stability  = min(completedSelfCrawlCount, 5) × 2
+ * All inputs are measured by Webamazee's own crawler/backlink records. */
+export async function webamazeeDomainStrength(orgId: string, projectId: string) {
+  const [crawls, selfCrawl, backlinks, backlinkRows] = await Promise.all([
+    Crawl.countDocuments({ organization: orgId, project: projectId, status: 'completed', type: 'self' }),
+    Crawl.findOne({ organization: orgId, project: projectId, status: 'completed', type: 'self' }).sort({ startedAt: -1 }).lean<Record<string, unknown> | null>(),
+    Backlink.countDocuments({ organization: orgId, project: projectId }),
+    Backlink.find({ organization: orgId, project: projectId }).select('sourceUrl').lean<{ sourceUrl: string }[]>(),
+  ]);
+  const labels = {
+    name: 'Webamazee Domain Strength',
+    disclaimer: 'Internal first-party score computed from Webamazee-measured signals only. Not comparable to any third-party authority metric — different data, different math.',
+    source: SRC.crawler,
+  };
+  if (!selfCrawl?.pageCrawlId) {
+    return { available: false as const, reason: 'Run a Site Crawl first — the score needs measured data.', ...labels };
+  }
+  const pages = await CrawlPage.find({ project: projectId, crawlId: selfCrawl.pageCrawlId as string })
+    .select('status noindex indexable ttfbMs wordCount inlinkCount finalUrl').lean<Record<string, unknown>[]>();
+  const stats = (selfCrawl.stats ?? {}) as Record<string, unknown>;
+  const refDomains = new Set(backlinkRows.map((b) => hostOf(String(b.sourceUrl ?? '')).trim()).filter(Boolean));
+  const referral = Math.min(refDomains.size * 4 + backlinks * 1, 40);
+  const okPages = pages.filter((p) => p.status === 200);
+  const indexable = pages.length ? okPages.filter((p) => !p.noindex).length / pages.length : 0;
+  const avgIn = pages.length ? pages.reduce((s, p) => s + ((p.inlinkCount as number) ?? 0), 0) / pages.length : 0;
+  const structure = Math.min(15 * indexable, 15) + Math.min(2 * avgIn, 10);
+  const https = String(selfCrawl.domain).startsWith('https://');
+  const ttfb = (stats.avgTtfbMs as number) ?? 10_000;
+  const technical = (https ? 5 : 0) + (ttfb < 500 ? 8 : ttfb < 1500 ? 5 : ttfb < 3000 ? 2 : 0);
+  const avgWords = pages.length ? pages.reduce((s, p) => s + ((p.wordCount as number) ?? 0), 0) / pages.length : 0;
+  const content = Math.min(12 * (avgWords / 600), 12);
+  const stability = Math.min(crawls, 5) * 2;
+  const score = Math.round(referral + structure + technical + content + stability);
+  return {
+    available: true as const,
+    score,
+    max: 100,
+    signals: {
+      referral: { points: Math.round(referral), max: 40, discoveredReferringDomains: refDomains.size, discoveredReferringPages: backlinks },
+      structure: { points: Math.round(structure), max: 25, indexableRatio: Math.round(indexable * 100) / 100, avgInternalInlinksPerPage: Math.round(avgIn * 100) / 100 },
+      technical: { points: technical, max: 13, https, avgTtfbMs: ttfb },
+      content: { points: Math.round(content), max: 12, avgWordCount: Math.round(avgWords) },
+      stability: { points: stability, max: 10, completedSelfCrawls: crawls },
+    },
+    formula: 'referral(≤40) + structure(≤25) + technical(≤13) + content(≤12) + stability(≤10) — all measured by Webamazee crawls',
+    updatedAt: selfCrawl.completedAt as string,
+    ...labels,
+  };
+}
+
+/** §4 — Webamazee Page Strength (0–100) for one crawled page:
+ *  inbound(≤30) + outbound(≤8) + depth(≤12) + content(≤15) + http(≤10) + indexable(≤15) + performance(≤10) */
+export async function webamazeePageStrength(orgId: string, projectId: string, page: Record<string, unknown>) {
+  const crawlId = page.crawlId as string;
+  const incoming = crawlId && page.finalUrl
+    ? await CrawlLink.find({ project: projectId, crawlId, internal: true, toUrl: { $in: [String(page.finalUrl), clean(String(page.finalUrl)), `${clean(String(page.finalUrl))}/`] } })
+      .select('fromUrl').lean<{ fromUrl: string }[]>()
+    : [];
+  const uniqSources = new Set(incoming.map((l) => clean(l.fromUrl)));
+  const inbound = Math.min(uniqSources.size * 6, 30);
+  const outbound = Math.min(((page.outlinkCount as number) ?? 0), 8);
+  const depth = (page.depth as number) ?? 9;
+  const depthPts = depth === 0 ? 12 : depth <= 2 ? 8 : depth <= 4 ? 4 : 0;
+  const wc = (page.wordCount as number) ?? 0;
+  const contentPts = wc >= 1500 ? 15 : wc >= 600 ? 10 : wc >= 300 ? 6 : 0;
+  const httpPts = page.status === 200 ? 10 : 0;
+  const indexablePts = page.noindex ? 0 : 15;
+  const ttfb = (page.ttfbMs as number) ?? 10_000;
+  const perfPts = ttfb < 500 ? 10 : ttfb < 1500 ? 6 : ttfb < 3000 ? 3 : 0;
+  const score = inbound + outbound + depthPts + contentPts + httpPts + indexablePts + perfPts;
+  return {
+    name: 'Webamazee Page Strength',
+    score,
+    max: 100,
+    signals: {
+      inboundLinks: uniqSources.size, outboundLinks: (page.outlinkCount as number) ?? 0,
+      depth, wordCount: wc, status: page.status, indexable: !page.noindex, ttfbMs: ttfb,
+    },
+    formula: 'inbound(≤30) + outbound(≤8) + depth(≤12) + content(≤15) + http(≤10) + indexable(≤15) + performance(≤10)',
+    source: 'Measured by Webamazee crawler — internal signals only',
+    disclaimer: 'Internal first-party score. Not comparable to any third-party page-authority metric.',
+  };
+}
+
+/** §5 — Webamazee-derived keyword coverage: what our own crawl can measure for a term. */
+export async function firstPartyKeywordCoverage(orgId: string, projectId: string, terms: { _id: { toString(): string }; term: string }[]) {
+  const selfCrawl = await Crawl.findOne({ organization: orgId, project: projectId, status: 'completed', type: 'self' })
+    .sort({ startedAt: -1 }).lean<Record<string, unknown> | null>();
+  if (!selfCrawl?.pageCrawlId || !terms.length) return {};
+  const [pages, links] = await Promise.all([
+    CrawlPage.find({ project: projectId, crawlId: selfCrawl.pageCrawlId as string, status: 200 })
+      .select('finalUrl title h1 headings metaDescription').lean<Record<string, unknown>[]>(),
+    CrawlLink.find({ project: projectId, crawlId: selfCrawl.pageCrawlId as string, internal: true })
+      .select('toUrl anchor').lean<{ toUrl: string; anchor: string }[]>(),
+  ]);
+  const out: Record<string, unknown> = {};
+  for (const kw of terms.slice(0, 300)) {
+    const titlePages: string[] = [];
+    const headingPages: string[] = [];
+    const metaPages: string[] = [];
+    for (const p of pages) {
+      const u = String(p.finalUrl);
+      if (containsTerm(String(p.title ?? ''), kw.term)) titlePages.push(u);
+      const hs = [((p.h1 as string[]) ?? []).join(' '), ...((p.headings as { text?: string }[]) ?? []).map((h) => h.text ?? '')].join(' ');
+      if (containsTerm(hs, kw.term)) headingPages.push(u);
+      if (containsTerm(String(p.metaDescription ?? ''), kw.term)) metaPages.push(u);
+    }
+    const anchorPages = new Set<string>();
+    for (const l of links) if (containsTerm(String(l.anchor ?? ''), kw.term)) anchorPages.add(clean(l.toUrl));
+    const best = titlePages[0] ?? headingPages[0] ?? metaPages[0] ?? [...anchorPages][0] ?? null;
+    const signalPages = new Set([...titlePages, ...headingPages]);
+    out[String(kw._id)] = {
+      pagesWithTermInTitle: titlePages.length,
+      pagesWithTermInHeading: headingPages.length,
+      pagesWithTermInMeta: metaPages.length,
+      pagesWithTermInAnchor: anchorPages.size,
+      mappedPage: best,
+      cannibalizationSignal: signalPages.size > 1,
+      coverage: titlePages.length ? 'strong' : headingPages.length || anchorPages.size ? 'partial' : metaPages.length ? 'partial' : 'none',
+      label: 'Webamazee-derived — measured from your own crawl (title/heading/meta/anchor analysis)',
+    };
+  }
+  return out;
+}

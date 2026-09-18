@@ -73,9 +73,7 @@ export default function IntegrationsPage() {
                   {i.provider === 'wordpress' && 'Apply approved on-page and content changes via the WP REST API.'}
                   {i.provider === 'shopify' && 'Store content and product SEO via Admin API.'}
                   {i.provider === 'webflow' && 'CMS content updates via Webflow API.'}
-                  {i.provider === 'ahrefs' && 'Backlink and keyword metrics for the Off-Page and Keyword agents.'}
-                  {i.provider === 'semrush' && 'Competitor and keyword data.'}
-                  {i.provider === 'dataforseo' && 'SERP, keyword and backlink data pipelines.'}
+
                   {i.provider === 'slack' && 'Deliver agent notifications to your workspace.'}
                   {i.provider === 'smtp' && 'Send outreach and report emails.'}
                   {i.provider === 'playwright_worker' && 'Headless browser workers for JS-heavy sites and screenshots.'}

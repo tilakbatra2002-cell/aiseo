@@ -51,7 +51,7 @@ Providers: **local Ollama (default dev)**, OpenAI-compatible, Groq-compatible, A
 
 ## Integrations
 - **Working**: state machine, encrypted credential storage, connect/disconnect, agent gating.
-- **Requires credentials**: WordPress (execution code implemented — REST title/meta updates), Google OAuth family, Ahrefs/Semrush/DataForSEO, Slack, SMTP.
+- **Requires credentials**: WordPress (execution code implemented — REST title/meta updates), Google OAuth family, Slack, SMTP.
 - **Architecture only**: Shopify, Webflow execution paths; Playwright browser worker.
 - **Not implemented**: live Google OAuth redirect dance (token paste supported), Shopify/Webflow write paths.
 

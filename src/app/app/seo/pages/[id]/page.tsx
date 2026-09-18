@@ -18,6 +18,7 @@ interface Detail {
   inlinks: { fromUrl: string; anchor: string; followType: string }[];
   outlinks: { toUrl: string; anchor: string; followType: string; internal: boolean }[];
   issues: { _id: string; severity: string; title: string; ruleKey: string }[];
+  pageStrength?: { name: string; score: number; max: number; signals: Record<string, unknown>; formula: string; source: string; disclaimer: string };
   collected: { method: string; fetchedAt: string };
   rawHtmlAvailable: boolean;
   rawHtmlNote: string;
@@ -57,6 +58,16 @@ export default function PageExplorerPage() {
         <Field label="Response time (TTFB)" value={<span style={{ color: (p.ttfbMs ?? 0) > 1500 ? '#dc2626' : undefined }}>{fmtMs(p.ttfbMs)}</span>} />
         <Field label="Page size (HTML)" value={fmtBytes(p.pageSizeBytes)} />
       </div>
+
+      {d.pageStrength && (
+        <div className="mb-5 rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-soft)' }}>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--text-3)' }}>Webamazee Page Strength</span>
+            <span className="text-xl font-extrabold" style={{ color: 'var(--accent)' }}>{d.pageStrength.score}<span className="text-xs" style={{ color: 'var(--text-3)' }}>/{d.pageStrength.max}</span></span>
+            <span className="text-[10px]" style={{ color: 'var(--text-3)' }}>{d.pageStrength.formula} — first-party signals only, not comparable to third-party metrics</span>
+          </div>
+        </div>
+      )}
 
       {d.issues.length > 0 && (
         <Card className="mb-5">

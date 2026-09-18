@@ -233,24 +233,39 @@ export async function runGbpAnalysis(ctx: RunCtx) {
   await ctx.output({ message: 'GBP integration connected; live GBP fetch is executed by the integration service.' });
 }
 
-/* ========================= Off-Page SEO Agent ====================== */
+/* ========================= Off-Page SEO Agent (first-party) ======================
+ * Works ONLY on Webamazee-measured data: Discovered Backlinks (own crawler + user
+ * imports) and the Webamazee Domain Strength score. No paid backlink index is
+ * queried and no metrics are estimated. */
 export async function runOffPageAnalysis(ctx: RunCtx) {
-  await ctx.taskLog(`${ctx.agent.name} checking backlink data providers`);
-  const providers = ['dataforseo', 'ahrefs', 'semrush'];
-  let connectedProvider: string | null = null;
-  for (const p of providers) {
-    if (await hasIntegration(ctx, p)) { connectedProvider = p; break; }
-  }
-  if (!connectedProvider) {
+  await ctx.taskLog(`${ctx.agent.name} analyzing first-party backlink data (Webamazee SEO Intelligence)`);
+  const { firstPartyBacklinkSummary, webamazeeDomainStrength } = await import('../seo/intelligence');
+  const [summary, strength] = await Promise.all([
+    firstPartyBacklinkSummary(ctx.orgId, String(ctx.project._id)),
+    webamazeeDomainStrength(ctx.orgId, String(ctx.project._id)),
+  ]);
+  if (!summary.total) {
     await ctx.output({
-      integrationRequired: 'backlink_provider (Ahrefs / Semrush / DataForSEO)',
-      message: 'No backlink data provider is connected. Backlink counts, referring domains and link gaps were NOT estimated or fabricated.',
-      plannedWorkOnceConnected: ['Backlink profile analysis', 'Referring domain quality review', 'Competitor link gap', 'Outreach prospect list'],
+      dataStatus: 'unavailable',
+      message: 'No discovered backlinks yet. Backlink Intelligence only counts links our crawler actually found or you imported — never estimated.',
+      howToGetData: ['Run a competitor/partner-site crawl (we record links found pointing at your domain)', 'Import a CSV in SEO Intelligence → Backlinks', 'Connect Google Search Console for referring pages Google reports'],
+      note: 'Discovered Backlinks is a partial dataset — never labelled as total backlinks.',
     });
-    await ctx.taskLog('Off-page analysis blocked — Integration Required: backlink data provider');
+    await ctx.taskLog('Off-page analysis: no discovered backlinks yet');
     return;
   }
-  await ctx.output({ message: `Backlink provider ${connectedProvider} connected; live queries execute via the integration service.` });
+  await ctx.tool('seo_intelligence', 'analyzed discovered backlinks', async () => summary);
+  await ctx.output({
+    dataStatus: 'verified',
+    discoveredBacklinks: summary.total,
+    referringDomains: summary.referringDomains,
+    byFollow: summary.byFollow,
+    topSourceDomains: summary.topSourceDomains,
+    webamazeeDomainStrength: strength,
+    sourceLabel: 'Observed by Webamazee — Discovered Backlinks (first-party, partial dataset)',
+    caveat: 'These figures reflect links discovered by our crawler/imports only. They are never presented as an internet-wide index.',
+  });
+  await ctx.taskLog(`Off-page analysis: ${summary.total} discovered backlink(s) across ${summary.referringDomains} referring domain(s); Webamazee Domain Strength ${strength.available ? `${strength.score}/100` : 'unavailable'}`);
 }
 
 /* ========================== Analytics Agent ======================== */

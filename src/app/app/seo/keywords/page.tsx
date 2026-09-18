@@ -5,7 +5,7 @@ import { api } from '@/lib/api-client';
 import { Card, EmptyState, PageHeader, Spinner, Tag } from '@/components/ui';
 import { LimitationNote, ProjectPicker, SectionTitle, SourceBadge, Td, Th, cut, useApi, useProjectParam, withProject } from '../_seo-ui';
 
-interface Kw { _id: string; term: string; targetUrl?: string; country: string; device: string; intent?: string; source: string; volume: string; latestRank?: { position: number; date: string; sourceLabel: string } | null }
+interface Kw { _id: string; term: string; targetUrl?: string; country: string; device: string; intent?: string; source: string; volume: string; latestRank?: { position: number; date: string; sourceLabel: string } | null; firstParty?: { pagesWithTermInTitle: number; pagesWithTermInHeading: number; pagesWithTermInMeta: number; pagesWithTermInAnchor: number; mappedPage: string | null; cannibalizationSignal: boolean; coverage: string; label: string } | null }
 
 export default function KeywordsPage() {
   const project = useProjectParam();
@@ -52,7 +52,7 @@ function Inner({ project }: { project: string }) {
           <EmptyState title="No keywords tracked" hint="Add keywords above. When Search Console is connected, positions appear as labelled GSC Average Position — never fabricated ranks." />
         ) : (
           <table className="w-full">
-            <thead><tr><Th>Keyword</Th><Th>Intent</Th><Th>Target URL</Th><Th>Volume</Th><Th>Position</Th><Th>Source</Th><Th></Th></tr></thead>
+            <thead><tr><Th>Keyword</Th><Th>Intent</Th><Th>Target URL</Th><Th>Volume</Th><Th>Position</Th><Th>Coverage (Webamazee-derived)</Th><Th></Th></tr></thead>
             <tbody>
               {data.items.map((k) => (
                 <tr key={k._id} className="border-t" style={{ borderColor: 'var(--border)' }}>
@@ -65,7 +65,17 @@ function Inner({ project }: { project: string }) {
                       ? <span title={k.latestRank.sourceLabel} className="font-extrabold" style={{ color: 'var(--accent)' }}>#{k.latestRank.position.toFixed(1)} <span className="text-[10px] font-semibold" style={{ color: 'var(--text-3)' }}>GSC avg · {k.latestRank.date}</span></span>
                       : <span title="Requires connected Google Search Console" style={{ color: 'var(--text-3)' }}>Requires Integration</span>}
                   </Td>
-                  <Td style={{ color: 'var(--text-3)' }}>{k.source}</Td>
+                  <Td>
+                    {k.firstParty ? (
+                      <span className="flex flex-wrap items-center gap-1" title={k.firstParty.mappedPage ? `Best mapped page: ${k.firstParty.mappedPage}` : 'No page covers this term in title/heading/meta/anchors'}>
+                        <Tag tone={k.firstParty.coverage === 'strong' ? 'blue' : undefined}>{k.firstParty.coverage}</Tag>
+                        <span className="text-[10px]" style={{ color: 'var(--text-3)' }}>
+                          title×{k.firstParty.pagesWithTermInTitle} · h×{k.firstParty.pagesWithTermInHeading} · anchor×{k.firstParty.pagesWithTermInAnchor}
+                          {k.firstParty.cannibalizationSignal ? ' · cannibalization?' : ''}
+                        </span>
+                      </span>
+                    ) : <span style={{ color: 'var(--text-3)' }}>Requires crawl</span>}
+                  </Td>
                   <Td><button className="btn-ghost !px-2 !py-1 text-[11px]" onClick={() => remove(k._id)}>Remove</button></Td>
                 </tr>
               ))}
