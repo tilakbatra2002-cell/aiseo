@@ -1,0 +1,15 @@
+export const env = {
+  MONGODB_URI: process.env.MONGODB_URI ?? '',
+  JWT_SECRET: process.env.JWT_SECRET || 'agentos-dev-secret-change-me',
+  AI_ENABLED: process.env.AI_ENABLED === 'true',
+  AI_PROVIDER: process.env.AI_PROVIDER || 'local',
+  AI_BASE_URL: process.env.AI_BASE_URL || 'http://localhost:11434',
+  AI_API_KEY: process.env.AI_API_KEY || '',
+  AI_MODEL: process.env.AI_MODEL || 'llama3.2',
+  AI_TEMPERATURE: Number(process.env.AI_TEMPERATURE ?? 0.2),
+  WORKER_POLL_MS: Number(process.env.WORKER_POLL_MS ?? 3000),
+  CRAWL_MAX_PAGES: Math.min(Number(process.env.CRAWL_MAX_PAGES ?? 25), 60),
+  CRAWL_CONCURRENCY: Number(process.env.CRAWL_CONCURRENCY ?? 4),
+  CRAWL_DELAY_MS: Number(process.env.CRAWL_DELAY_MS ?? 300),
+  IS_PROD: process.env.NODE_ENV === 'production',
+};

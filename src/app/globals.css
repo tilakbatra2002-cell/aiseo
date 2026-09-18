@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #ffffff;
+  --bg-soft: #f7f8fa;
+  --bg-panel: #ffffff;
+  --border: #e5e7eb;
+  --border-strong: #d7dae0;
+  --text: #0b0d10;
+  --text-2: #4b5563;
+  --text-3: #9aa3af;
+  --accent: #0f6dff;
+  --accent-soft: rgba(15, 109, 255, 0.08);
+}
+
+.dark {
+  --bg: #0c0f14;
+  --bg-soft: #12161d;
+  --bg-panel: #12161d;
+  --border: #1f2632;
+  --border-strong: #2a3242;
+  --text: #f4f6f9;
+  --text-2: #9aa3b2;
+  --text-3: #6b7382;
+  --accent: #0f6dff;
+  --accent-soft: rgba(15, 109, 255, 0.14);
+}
+
+* { transition: background-color 0.18s ease, border-color 0.18s ease; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+@layer components {
+  .panel {
+    @apply rounded-xl border;
+    background: var(--bg-panel);
+    border-color: var(--border);
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm;
+    background: var(--accent);
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium border;
+    color: var(--text-2);
+    border-color: var(--border);
+    background: transparent;
+  }
+  .btn-ghost:hover { color: var(--text); background: var(--bg-soft); }
+  .input {
+    @apply w-full rounded-lg border px-3 py-2 text-sm outline-none;
+    background: var(--bg-panel);
+    border-color: var(--border);
+    color: var(--text);
+  }
+  .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .label { @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide; color: var(--text-2); }
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold;
+  }
+  .th { @apply px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide; color: var(--text-3); }
+  .td { @apply px-3 py-3 text-sm; color: var(--text); }
+  .link { color: var(--accent); }
+  .link:hover { text-decoration: underline; }
+}
+
+/* Branded preloader */
+@keyframes agentos-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.06); opacity: 0.85; }
+}
+@keyframes agentos-bar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+.preloader-mark { animation: agentos-pulse 1.6s ease-in-out infinite; }
+.preloader-bar { animation: agentos-bar 1.2s ease-in-out infinite; }
