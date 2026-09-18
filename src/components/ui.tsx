@@ -103,8 +103,8 @@ export function PageHeader({ title, subtitle, actions }: { title: React.ReactNod
   );
 }
 
-export function Card({ children, className = '', pad = true }: { children: React.ReactNode; className?: string; pad?: boolean }) {
-  return <div className={`panel ${pad ? 'p-5' : ''} ${className}`}>{children}</div>;
+export function Card({ children, className = '', pad = true, style }: { children: React.ReactNode; className?: string; pad?: boolean; style?: React.CSSProperties }) {
+  return <div className={`panel ${pad ? 'p-5' : ''} ${className}`} style={style}>{children}</div>;
 }
 
 export function StatCard({ label, value, hint, accent }: { label: string; value: React.ReactNode; hint?: string; accent?: boolean }) {

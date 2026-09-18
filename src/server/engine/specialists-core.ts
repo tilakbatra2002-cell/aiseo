@@ -22,7 +22,15 @@ export async function storeCrawl(ctx: RunCtx, crawl: CrawlResult) {
     error: p.error,
     ...(p.parsed ?? {}),
   }));
-  await CrawlPage.deleteMany({ project: ctx.project._id });
+  // Replace only THIS specialist's previous crawl rows. SEO Intelligence stores
+  // its own richer CrawlPage rows in the same collection keyed by crawlId —
+  // scoped deletes keep those intact (no project-wide wipe).
+  const prev = await ProjectMemory.findOne(
+    { organization: ctx.orgId, project: ctx.project._id, key: 'latest_crawl' },
+  ).select('value.crawlId').lean<any>();
+  if (prev?.value?.crawlId) {
+    await CrawlPage.deleteMany({ project: ctx.project._id, crawlId: prev.value.crawlId });
+  }
   if (docs.length) await CrawlPage.insertMany(docs, { ordered: false }).catch(() => undefined);
   await ProjectMemory.findOneAndUpdate(
     { organization: ctx.orgId, project: ctx.project._id, key: 'latest_crawl' },

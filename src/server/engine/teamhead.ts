@@ -20,6 +20,19 @@ export async function runTeamHeadReview(ctx: RunCtx) {
     status: { $in: ['Detected'] },
   }).lean<any>();
 
+  // ---- SEO Intelligence consumption (own data layer; additive) ----
+  const { SEOIssue, Crawl: SEOSiteCrawl } = await import('@/models');
+  const seoIntel = await ctx.tool('seo_intelligence', 'read SEO Intelligence layer', async () => {
+    const [openIssues, lastCrawl] = await Promise.all([
+      SEOIssue.find({ project: ctx.project._id, status: 'open' }).select('severity category ruleKey url').lean<any>(),
+      SEOSiteCrawl.findOne({ project: ctx.project._id, type: 'self', status: 'completed' }).sort({ startedAt: -1 }).select('stats completedAt progress').lean<any>(),
+    ]);
+    const bySev: Record<string, number> = {};
+    const byCat: Record<string, number> = {};
+    for (const i of openIssues) { bySev[i.severity] = (bySev[i.severity] ?? 0) + 1; byCat[i.category] = (byCat[i.category] ?? 0) + 1; }
+    return { openIssues: openIssues.length, bySeverity: bySev, byCategory: byCat, crawl: lastCrawl ? { completedAt: lastCrawl.completedAt, stats: lastCrawl.stats } : null };
+  }, (r) => `SEO Intelligence: ${r.openIssues} open measured issue(s)${r.crawl ? ' from first-party crawl' : ''}`);
+
   const byCategory = new Map<string, typeof findings>();
   for (const f of findings) {
     const list = byCategory.get(f.category) ?? [];
@@ -69,11 +82,11 @@ export async function runTeamHeadReview(ctx: RunCtx) {
       rationale: 'Content findings detected in the audit.',
     });
   }
-  if ((byCategory.get('links')?.length ?? 0) > 0) {
+  if ((byCategory.get('links')?.length ?? 0) > 0 || (seoIntel.byCategory.links ?? 0) > 0 || (seoIntel.byCategory.indexability ?? 0) > 0) {
     plan.push({
       specialistKey: 'internal_linking', kind: 'internal_linking', title: 'Internal linking improvements',
       objective: 'Map the link graph and surface orphan/weakly-linked pages.',
-      rationale: `${byCategory.get('links')!.length} internal-linking finding(s).`,
+      rationale: `${(byCategory.get('links')?.length ?? 0) + (seoIntel.byCategory.links ?? 0)} internal-linking signal(s) from findings + SEO Intelligence (${seoIntel.byCategory.indexability ?? 0} indexability).`,
     });
   }
   if ((ctx.project.targetLocations ?? []).length > 0) {
@@ -145,6 +158,7 @@ export async function runTeamHeadReview(ctx: RunCtx) {
   await ctx.output({
     findingsReviewed: findings.length,
     tasksCreated: plan.length,
+    seoIntelligence: seoIntel,
     plan: plan.map((p) => ({ specialist: p.specialistKey, title: p.title, rationale: p.rationale })),
     createdTaskIds: created,
   });

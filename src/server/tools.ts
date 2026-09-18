@@ -32,6 +32,7 @@ export const TOOL_REGISTRY: ToolDef[] = [
   { key: 'webflow', name: 'Webflow', category: 'CMS', description: 'Webflow CMS API integration.', requiresIntegration: 'webflow' },
   { key: 'email', name: 'Email', category: 'Comms', description: 'Sends transactional email via SMTP.', requiresIntegration: 'smtp' },
   { key: 'webhooks', name: 'Webhooks', category: 'Comms', description: 'Delivers event webhooks (e.g. Slack).', requiresIntegration: 'slack' },
+  { key: 'seo_intelligence', name: 'SEO Intelligence', category: 'Crawl', description: 'Webamazee own SEO data layer: audits, issues, link graph, crawls, keyword/ranking observations.' },
   { key: 'database', name: 'Database', category: 'Internal', description: 'Reads and writes platform records.' },
   { key: 'file_system', name: 'File System', category: 'Internal', description: 'Stores and retrieves execution artifacts.' },
   { key: 'code_executor', name: 'Code Executor', category: 'Internal', description: 'Runs sandboxed analysis code for data processing.' },

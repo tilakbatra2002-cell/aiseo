@@ -11,5 +11,8 @@ export const env = {
   CRAWL_MAX_PAGES: Math.min(Number(process.env.CRAWL_MAX_PAGES ?? 25), 60),
   CRAWL_CONCURRENCY: Number(process.env.CRAWL_CONCURRENCY ?? 4),
   CRAWL_DELAY_MS: Number(process.env.CRAWL_DELAY_MS ?? 300),
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? '',
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ?? '',
+  APP_URL: (process.env.APP_URL ?? 'http://localhost:3000').replace(/\/$/, ''),
   IS_PROD: process.env.NODE_ENV === 'production',
 };

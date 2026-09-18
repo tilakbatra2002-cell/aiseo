@@ -22,6 +22,25 @@ const NAV: { section: string | null; items: { href: string; label: string; icon:
     ],
   },
   {
+    section: 'SEO Intelligence',
+    items: [
+      { href: '/app/seo/overview', label: 'SEO Overview', icon: <Icon d="M3 3v18h18M18 17V9m-5 8V5M8 17v-3" /> },
+      { href: '/app/seo/audit', label: 'Site Audit', icon: <Icon d="M12 2 4 5v6c0 5.5 3.8 10.7 8 12 4.2-1.3 8-6.5 8-12V5l-8-3Zm-1.5 10-2 2m2-2 4-4" /> },
+      { href: '/app/seo/explorer', label: 'Site Explorer', icon: <Icon d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20ZM2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20Z" /> },
+      { href: '/app/seo/pages', label: 'Pages', icon: <Icon d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6ZM14 2v6h6" /> },
+      { href: '/app/seo/keywords', label: 'Keywords', icon: <Icon d="M20 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-2 10 4 2M8 11h6M11 8v6" /> },
+      { href: '/app/seo/rankings', label: 'Rankings', icon: <Icon d="M18 20V10m-6 10V4M6 20v-6" /> },
+      { href: '/app/seo/competitors', label: 'Competitors', icon: <Icon d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" /> },
+      { href: '/app/seo/content-gap', label: 'Content Gap', icon: <Icon d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" /> },
+      { href: '/app/seo/internal-links', label: 'Internal Links', icon: <Icon d="M9 17H7A5 5 0 0 1 7 7h2m6 10h2a5 5 0 0 0 0-10h-2m-7 5h6" /> },
+      { href: '/app/seo/backlinks', label: 'Backlinks', icon: <Icon d="M13 5 19 11M8 19l6-6M16 3h5v5M4 20 21 3" /> },
+      { href: '/app/seo/gsc', label: 'Search Console', icon: <Icon d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10l10 0Z" /> },
+      { href: '/app/seo/analytics', label: 'SEO Analytics', icon: <Icon d="M3 3v18h18M7 15l4-4 3 3 5-6" /> },
+      { href: '/app/seo/history', label: 'SEO History', icon: <Icon d="M3 3v5h5M3.05 13A9 9 0 1 0 6 5.3L3 8M12 7v5l4 2" /> },
+      { href: '/app/seo/reports', label: 'SEO Reports', icon: <Icon d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6ZM14 2v6h6M9 15l2 2 4-4" /> },
+    ],
+  },
+  {
     section: 'AI Workforce',
     items: [
       { href: '/app/agents', label: 'Agents', icon: <Icon d="M12 8V4m0 0H8m4 0h4M5 8h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2Zm4 5h.01M15 13h.01M9 19v2m6-2v2" /> },

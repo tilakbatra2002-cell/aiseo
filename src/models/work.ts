@@ -164,7 +164,7 @@ const ReportSchema = new Schema(
     organization: { type: ObjectId, ref: 'Organization', required: true, index: true },
     project: { type: ObjectId, ref: 'Project', required: true, index: true },
     title: String,
-    type: { type: String, enum: ['discovery', 'strategy', 'execution', 'monthly'], default: 'discovery' },
+    type: { type: String, enum: ['discovery', 'strategy', 'execution', 'monthly', 'seo_intelligence'], default: 'discovery' },
     sections: Schema.Types.Mixed,
     summary: String,
     generatedBy: Schema.Types.Mixed,
@@ -246,6 +246,16 @@ const CrawlPageSchema = new Schema(
     og: Schema.Types.Mixed,
     error: String,
     fetchedAt: { type: Date, default: () => new Date() },
+    // ---- Webamazee SEO Intelligence (additive; unset for old audit crawls) ----
+    contentHash: String,        // sha1 of normalized html — powers change detection & dedupe
+    etag: String,               // for conditional re-fetch (incremental crawls)
+    lastModified: String,
+    pageSizeBytes: Number,
+    rawHtmlExcerpt: String,     // capped at 30_000 chars — page-level raw evidence
+    inlinkCount: Number,
+    outlinkCount: Number,
+    indexable: Boolean,         // computed: ok && status 200 && !noindex
+    dataSource: String,         // 'webamazee_crawler' when produced by the SEO engine
   },
   { timestamps: false },
 );

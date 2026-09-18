@@ -18,6 +18,12 @@ export async function processOneJob(): Promise<boolean> {
       case 'advance_workflow':
         await advanceWorkflow(String((job.payload as { projectId: string }).projectId));
         break;
+      case 'seo_crawl':
+        await (await import('@/server/seo/jobs')).processSeoCrawlJob(job.payload as Record<string, unknown>);
+        break;
+      case 'gsc_sync':
+        await (await import('@/server/seo/jobs')).processGscSyncJob(job.payload as Record<string, unknown>);
+        break;
       default:
         throw new Error(`Unknown job type "${job.type}"`);
     }
