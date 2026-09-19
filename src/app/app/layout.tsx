@@ -22,10 +22,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         const wait = Math.max(0, 650 - (Date.now() - started));
         setTimeout(() => { if (!cancelled) setMe(data); }, wait);
       })
-      .catch(() => {
+      .catch(async () => {
         if (!cancelled) {
           setFailed(true);
-          router.replace('/login');
+          // best-effort: clear any stale/invalid session cookie server-side
+          // (prevents the /login ↔ /app redirect loop for bad cookies)
+          await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => undefined);
+          if (!cancelled) router.replace('/login');
         }
       });
     return () => { cancelled = true; };

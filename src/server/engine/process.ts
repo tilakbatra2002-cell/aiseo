@@ -12,9 +12,14 @@ export async function processOneJob(): Promise<boolean> {
   if (!job) return false;
   try {
     switch (job.type) {
-      case 'run_task':
-        await runTask(String((job.payload as { taskId: string }).taskId));
+      case 'run_task': {
+        // runTask returns { ok:false, error } for already-known failures
+        // (missing task/project/unassigned agent) — surface them as real job
+        // failures instead of silently marking the job completed.
+        const r = await runTask(String((job.payload as { taskId: string }).taskId));
+        if (!r.ok) throw new Error(r.error ?? 'runTask failed');
         break;
+      }
       case 'advance_workflow':
         await advanceWorkflow(String((job.payload as { projectId: string }).projectId));
         break;

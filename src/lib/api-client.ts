@@ -5,6 +5,7 @@ export async function api<T = unknown>(path: string, opts?: { method?: string; b
     method: opts?.method ?? 'GET',
     headers: opts?.body ? { 'content-type': 'application/json' } : undefined,
     body: opts?.body ? JSON.stringify(opts.body) : undefined,
+    credentials: 'same-origin', // session cookie is always sent same-origin (explicit, future-proof)
     cache: 'no-store',
   });
   const data = await res.json().catch(() => ({ ok: false, error: 'Unexpected response' }));
